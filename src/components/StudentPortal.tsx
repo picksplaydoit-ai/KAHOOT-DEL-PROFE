@@ -31,7 +31,8 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
 
   // Inicializar socket.io client
   useEffect(() => {
-    const newSocket = io();
+    const socketUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' : undefined;
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     newSocket.on('student:joined-ack', (data: { student: Student; session: AssessmentSession }) => {

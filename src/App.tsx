@@ -28,10 +28,12 @@ export default function App() {
   const [alerts, setAlerts] = useState<AntiCheatAlert[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
 
+  const apiBaseUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+  
   // Cargar información inicial del servidor
   const fetchNetworkInfo = async () => {
     try {
-      const res = await fetch('/api/network-info');
+      const res = await fetch(`${apiBaseUrl}/api/network-info`);
       const data = await res.json();
       setNetworkInfo(data);
     } catch (err) {
@@ -41,7 +43,7 @@ export default function App() {
 
   const fetchQuizzes = async () => {
     try {
-      const res = await fetch('/api/quizzes');
+      const res = await fetch(`${apiBaseUrl}/api/quizzes`);
       const data = await res.json();
       setQuizzes(data);
     } catch (err) {
@@ -51,7 +53,7 @@ export default function App() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch('/api/sessions');
+      const res = await fetch(`${apiBaseUrl}/api/sessions`);
       const data = await res.json();
       setSessions(data);
       if (data.length > 0 && data[0].status === 'active') {
@@ -69,7 +71,8 @@ export default function App() {
     fetchQuizzes();
     fetchSessions();
 
-    const newSocket = io();
+    const socketUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' : undefined;
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     newSocket.on('teacher:student-joined', (data: { student: Student; session: AssessmentSession }) => {
@@ -90,7 +93,7 @@ export default function App() {
 
   const handleSaveQuiz = async (quiz: Quiz) => {
     try {
-      const res = await fetch('/api/quizzes', {
+      const res = await fetch(`${apiBaseUrl}/api/quizzes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quiz)
@@ -104,7 +107,7 @@ export default function App() {
 
   const handleDeleteQuiz = async (id: string) => {
     try {
-      await fetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+      await fetch(`${apiBaseUrl}/api/quizzes/${id}`, { method: 'DELETE' });
       setQuizzes(prev => prev.filter(q => q.id !== id));
     } catch (err) {
       console.error('Error eliminando cuestionario:', err);
@@ -113,7 +116,7 @@ export default function App() {
 
   const handleStartExam = async (quizId: string) => {
     try {
-      const res = await fetch('/api/sessions/start', {
+      const res = await fetch(`${apiBaseUrl}/api/sessions/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quizId, type: 'exam' })
@@ -131,7 +134,7 @@ export default function App() {
 
   const handleStartKahoot = async (quizId: string) => {
     try {
-      const res = await fetch('/api/sessions/start', {
+      const res = await fetch(`${apiBaseUrl}/api/sessions/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quizId, type: 'kahoot', questionTimerSeconds: 30 })

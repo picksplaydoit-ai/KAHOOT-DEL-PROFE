@@ -40,36 +40,10 @@ function getLocalNetworkIPs() {
   return ips.length > 0 ? ips : [{ interface: 'Local', address: '127.0.0.1' }];
 }
 
-async function startServerInProduction() {
-  try {
-    const serverPath = path.join(__dirname, 'dist', 'server.js');
-    await import(`file://${serverPath}`);
-    console.log('Servidor iniciado correctamente desde:', serverPath);
-  } catch (err) {
-    console.error('Error al iniciar el servidor en producción:', err);
-  }
-}
-
-/**
- * Inicia el servidor Node.js (Express + Socket.io) si se ejecuta fuera de dev mode
- */
-function startIntegratedServer() {
-  const localIPs = getLocalNetworkIPs();
-  console.log('===================================================');
-  console.log('  🎓 EL PROFE PRO - SERVIDO DE EVALUACIÓN OFFLINE   ');
-  console.log('===================================================');
-  console.log(` Servidor local activo en puerto: ${PORT}`);
-  console.log(' Direcciones IP detectadas en la red local:');
-  localIPs.forEach(ip => {
-    console.log(`   👉 http://${ip.address}:${PORT} (${ip.interface})`);
-  });
-  console.log('===================================================');
-}
-
 /**
  * Crea la ventana principal de Electron
  */
-function createMainWindow() {
+async function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1366,
     height: 868,
@@ -85,11 +59,15 @@ function createMainWindow() {
     show: false
   });
 
-  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-  
-  setTimeout(() => {
-    mainWindow.loadURL(appUrl);
-  }, 1000);
+  if (app.isPackaged) {
+    // En producción empaquetada, cargar el archivo index.html compilado directamente
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    await mainWindow.loadFile(indexPath);
+  } else {
+    // En desarrollo, cargar la URL de Vite / Express
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    await mainWindow.loadURL(appUrl);
+  }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -154,10 +132,15 @@ function createMainWindow() {
 
 // Inicialización de App Electron
 app.whenReady().then(async () => {
-  if (app.isPackaged) {
-    await startServerInProduction();
+  // Iniciar servidor Express/Socket.io en segundo plano
+  try {
+    const serverPath = path.join(__dirname, 'dist', 'server.js');
+    await import(`file://${serverPath}`);
+    console.log('Servidor Express iniciado en puerto:', PORT);
+  } catch (err) {
+    console.error('Error al iniciar el servidor Express:', err);
   }
-  startIntegratedServer();
+
   createMainWindow();
 
   app.on('activate', () => {
