@@ -40,6 +40,16 @@ function getLocalNetworkIPs() {
   return ips.length > 0 ? ips : [{ interface: 'Local', address: '127.0.0.1' }];
 }
 
+async function startServerInProduction() {
+  try {
+    const serverPath = path.join(__dirname, 'dist', 'server.js');
+    await import(`file://${serverPath}`);
+    console.log('Servidor iniciado correctamente desde:', serverPath);
+  } catch (err) {
+    console.error('Error al iniciar el servidor en producción:', err);
+  }
+}
+
 /**
  * Inicia el servidor Node.js (Express + Socket.io) si se ejecuta fuera de dev mode
  */
@@ -76,8 +86,10 @@ function createMainWindow() {
   });
 
   const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-
-  mainWindow.loadURL(appUrl);
+  
+  setTimeout(() => {
+    mainWindow.loadURL(appUrl);
+  }, 1000);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -141,7 +153,10 @@ function createMainWindow() {
 }
 
 // Inicialización de App Electron
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  if (app.isPackaged) {
+    await startServerInProduction();
+  }
   startIntegratedServer();
   createMainWindow();
 
