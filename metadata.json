@@ -1,0 +1,6 @@
+{
+  "name": "El Profe Pro",
+  "description": "Servidor local e interactivo offline para evaluaciones, exámenes antitrampas y concursos tipo Kahoot en la red local",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
