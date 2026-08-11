@@ -60,8 +60,8 @@ async function createMainWindow() {
   });
 
   if (app.isPackaged) {
-    // En producción empaquetada, cargar el archivo index.html compilado directamente
-    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    // En producción empaquetada, buscar el archivo index.html compilado
+    const indexPath = path.join(__dirname, 'index.html');
     await mainWindow.loadFile(indexPath);
   } else {
     // En desarrollo, cargar la URL de Vite / Express
@@ -134,7 +134,9 @@ async function createMainWindow() {
 app.whenReady().then(async () => {
   // Iniciar servidor Express/Socket.io en segundo plano
   try {
-    const serverPath = path.join(__dirname, 'dist', 'server.js');
+    const serverPath = app.isPackaged 
+      ? path.join(__dirname, 'server.js') 
+      : path.join(__dirname, 'dist', 'server.js');
     await import(`file://${serverPath}`);
     console.log('Servidor Express iniciado en puerto:', PORT);
   } catch (err) {
