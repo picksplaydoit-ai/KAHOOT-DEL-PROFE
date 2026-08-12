@@ -5,9 +5,10 @@
  * de la laptop del profesor y lanza el servidor integrado Express + Socket.io.
  */
 
-import { app, BrowserWindow, Menu, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, shell, dialog } from 'electron';
 import os from 'os';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn } from 'child_process';
 
@@ -59,6 +60,10 @@ async function createMainWindow() {
     show: false
   });
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
   // Esperar a que el servidor Express levante y defina su puerto final
   const connectToServer = async (retries = 10) => {
     for (let i = 0; i < retries; i++) {
@@ -75,13 +80,12 @@ async function createMainWindow() {
       await new Promise(res => setTimeout(res, 500));
     }
     console.error('No se pudo conectar al servidor integrado.');
+    // Mostrar la ventana de todos modos para que no se quede oculta para siempre
+    mainWindow.show();
+    dialog.showErrorBox('Timeout de Servidor', 'El servidor interno tardó demasiado en responder o falló silenciosamente.\n\nRevisa si hay otra instancia corriendo o consulta los logs.');
   };
 
   await connectToServer();
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
 
   // Configurar Menú Superior
   const menuTemplate = [
@@ -146,14 +150,27 @@ async function createMainWindow() {
 app.whenReady().then(async () => {
   // Iniciar servidor Express/Socket.io en segundo plano
   try {
-    const serverPath = app.isPackaged 
-      ? path.join(__dirname, 'server.js') 
-      : path.join(__dirname, 'dist', 'server.js');
+    let serverPath;
+    const distServerPath = path.join(__dirname, 'dist', 'server.js');
+    const rootServerPath = path.join(__dirname, 'server.js');
+    
+    if (app.isPackaged) {
+      process.env.NODE_ENV = 'production';
+      serverPath = fs.existsSync(rootServerPath) ? rootServerPath : distServerPath;
+    } else {
+      serverPath = distServerPath;
+    }
+
+    if (!fs.existsSync(serverPath)) {
+      throw new Error(`No se encontró el archivo del servidor en:\n- ${rootServerPath}\n- ${distServerPath}`);
+    }
+
     const serverUrl = pathToFileURL(serverPath).href;
     await import(serverUrl);
     console.log('Iniciando servidor Express interno...');
   } catch (err) {
     console.error('Error al iniciar el servidor Express:', err);
+    dialog.showErrorBox('Error de Arranque', `Error al iniciar el servidor integrado:\n\n${err.message}\n\nStack: ${err.stack}`);
   }
 
   createMainWindow();

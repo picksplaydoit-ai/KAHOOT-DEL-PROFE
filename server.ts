@@ -358,11 +358,23 @@ async function startServer() {
     const __dirname = path.dirname(__filename);
     
     // In production, serve the Vite static files
-    // __dirname in ESM after esbuild is exactly where server.js is located (dist/)
-    const distPath = __dirname;
-    app.use(express.static(distPath));
+    // Determine where index.html is located
+    const distPathCandidate = path.join(__dirname, 'dist');
+    const rootPathCandidate = __dirname;
+    const fs = await import('fs');
+    
+    let servePath = __dirname;
+    if (fs.existsSync(path.join(distPathCandidate, 'index.html'))) {
+      servePath = distPathCandidate;
+    } else if (fs.existsSync(path.join(rootPathCandidate, 'index.html'))) {
+      servePath = rootPathCandidate;
+    } else {
+      console.warn('⚠️ No se encontró index.html ni en __dirname ni en __dirname/dist');
+    }
+
+    app.use(express.static(servePath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(servePath, 'index.html'));
     });
   }
 
