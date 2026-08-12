@@ -152,17 +152,17 @@ app.whenReady().then(async () => {
   try {
     let serverPath;
     const distServerPath = path.join(__dirname, 'dist', 'server.js');
-    const rootServerPath = path.join(__dirname, 'server.js');
+    const unpackedServerPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'dist', 'server.js');
     
     if (app.isPackaged) {
       process.env.NODE_ENV = 'production';
-      serverPath = fs.existsSync(rootServerPath) ? rootServerPath : distServerPath;
+      serverPath = fs.existsSync(unpackedServerPath) ? unpackedServerPath : distServerPath;
     } else {
       serverPath = distServerPath;
     }
 
     if (!fs.existsSync(serverPath)) {
-      throw new Error(`No se encontró el archivo del servidor en:\n- ${rootServerPath}\n- ${distServerPath}`);
+      throw new Error(`No se encontró el archivo del servidor en:\n- ${unpackedServerPath}\n- ${distServerPath}`);
     }
 
     const serverUrl = pathToFileURL(serverPath).href;

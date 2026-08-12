@@ -46,6 +46,15 @@
   },
   "build": {
     "appId": "com.elprofepro.app",
+    "files": [
+      "**/*",
+      "dist/**/*",
+      "!src/**/*",
+      "!.env*"
+    ],
+    "asarUnpack": [
+      "dist/**/*"
+    ],
     "win": {
       "target": "nsis"
     },
