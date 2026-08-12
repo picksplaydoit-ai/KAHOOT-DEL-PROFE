@@ -8,7 +8,7 @@
 import { app, BrowserWindow, Menu, ipcMain, shell } from 'electron';
 import os from 'os';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow = null;
 let serverProcess = null;
-const PORT = process.env.PORT || 3000;
+const DEFAULT_PORT = process.env.PORT || 3000;
 
 /**
  * Obtiene la dirección IP IPv4 de la red local (WiFi o Ethernet)
@@ -59,15 +59,25 @@ async function createMainWindow() {
     show: false
   });
 
-  if (app.isPackaged) {
-    // En producción empaquetada, buscar el archivo index.html compilado
-    const indexPath = path.join(__dirname, 'index.html');
-    await mainWindow.loadFile(indexPath);
-  } else {
-    // En desarrollo, cargar la URL de Vite / Express
-    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-    await mainWindow.loadURL(appUrl);
-  }
+  // Esperar a que el servidor Express levante y defina su puerto final
+  const connectToServer = async (retries = 10) => {
+    for (let i = 0; i < retries; i++) {
+      const actualPort = process.env.EXPRESS_PORT;
+      if (actualPort) {
+        const appUrl = process.env.APP_URL || `http://localhost:${actualPort}`;
+        try {
+          await mainWindow.loadURL(appUrl);
+          return;
+        } catch (e) {
+          console.log(`Reintentando carga de URL (${i+1}/${retries})...`);
+        }
+      }
+      await new Promise(res => setTimeout(res, 500));
+    }
+    console.error('No se pudo conectar al servidor integrado.');
+  };
+
+  await connectToServer();
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -81,8 +91,9 @@ async function createMainWindow() {
         {
           label: 'Ver IPs de Red Local',
           click: () => {
+            const actualPort = process.env.EXPRESS_PORT || DEFAULT_PORT;
             const ips = getLocalNetworkIPs();
-            const ipList = ips.map(i => `${i.interface}: http://${i.address}:${PORT}`).join('\n');
+            const ipList = ips.map(i => `${i.interface}: http://${i.address}:${actualPort}`).join('\n');
             mainWindow?.webContents.send('show-ip-info', ipList);
           }
         },
@@ -115,7 +126,8 @@ async function createMainWindow() {
         {
           label: 'Manual de Uso Offline',
           click: () => {
-            shell.openExternal(`http://localhost:${PORT}/#manual`);
+            const actualPort = process.env.EXPRESS_PORT || DEFAULT_PORT;
+            shell.openExternal(`http://localhost:${actualPort}/#manual`);
           }
         }
       ]
@@ -137,8 +149,9 @@ app.whenReady().then(async () => {
     const serverPath = app.isPackaged 
       ? path.join(__dirname, 'server.js') 
       : path.join(__dirname, 'dist', 'server.js');
-    await import(`file://${serverPath}`);
-    console.log('Servidor Express iniciado en puerto:', PORT);
+    const serverUrl = pathToFileURL(serverPath).href;
+    await import(serverUrl);
+    console.log('Iniciando servidor Express interno...');
   } catch (err) {
     console.error('Error al iniciar el servidor Express:', err);
   }

@@ -351,16 +351,37 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    // __dirname is not available in ESM, we need to construct it
+    const { fileURLToPath } = await import('url');
+    const path = await import('path');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // In production, serve the Vite static files
+    // __dirname in ESM after esbuild is exactly where server.js is located (dist/)
+    const distPath = __dirname;
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor El Profe Pro iniciado en http://localhost:${PORT}`);
-  });
+  const tryListen = (portToTry: number) => {
+    server.listen(portToTry, '0.0.0.0', () => {
+      console.log(`🚀 Servidor El Profe Pro iniciado en http://localhost:${portToTry}`);
+      // Actualizar variable env para que Electron la pueda leer si lo necesita
+      process.env.EXPRESS_PORT = portToTry.toString();
+    }).on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`⚠️ Puerto ${portToTry} en uso, intentando con ${portToTry + 1}...`);
+        tryListen(portToTry + 1);
+      } else {
+        console.error('Error al iniciar el servidor:', err);
+      }
+    });
+  };
+
+  tryListen(PORT);
 }
 
 startServer();
