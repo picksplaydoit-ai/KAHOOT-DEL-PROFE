@@ -62,16 +62,23 @@ app.get('/api/network-info', async (req, res) => {
 // Endpoint dinámico para generar QR bajo demanda
 app.get('/api/qr', async (req, res) => {
   try {
-    const url = req.query.url as string;
-    if (!url) return res.status(400).send('Falta url');
+    const pin = req.query.pin as string;
+    if (!pin) return res.status(400).send('Falta pin');
+    
+    // Obtener la IP local real para que los alumnos puedan conectarse
+    const config = await getNetworkConfig(PORT);
+    const url = `${config.fullUrl}/?pin=${pin}`;
+
     const QRCode = (await import('qrcode')).default;
-    const qrDataUrl = await QRCode.toDataURL(url, {
+    const buffer = await QRCode.toBuffer(url, {
       errorCorrectionLevel: 'M',
       margin: 2,
       width: 400,
       color: { dark: '#1e1b4b', light: '#ffffff' }
     });
-    res.json({ qrDataUrl });
+    
+    res.type('png');
+    res.send(buffer);
   } catch (err) {
     res.status(500).json({ error: 'Error generando QR' });
   }

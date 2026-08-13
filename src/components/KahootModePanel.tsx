@@ -168,7 +168,7 @@ export const KahootModePanel: React.FC<KahootModePanelProps> = ({
           <div className="flex flex-col md:flex-row items-center justify-center gap-12">
             <div className="bg-white p-4 rounded-3xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
               <img 
-                src={`/api/qr?url=${encodeURIComponent(`${window.location.protocol}//${window.location.host}/?pin=${activeSession.id}`)}`} 
+                src={`${window.location.protocol === 'file:' ? 'http://localhost:3000' : ''}/api/qr?pin=${activeSession.id}`} 
                 alt="QR de Juego" 
                 className="w-64 h-64 object-contain" 
               />
