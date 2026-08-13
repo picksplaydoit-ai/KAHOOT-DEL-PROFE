@@ -151,22 +151,24 @@ app.whenReady().then(async () => {
   // Iniciar servidor Express/Socket.io en segundo plano
   try {
     let serverPath;
-    const distServerPath = path.join(__dirname, 'dist', 'server.js');
-    const unpackedServerPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'dist', 'server.js');
+    const distServerPath = path.join(__dirname, 'dist', 'server.cjs');
+    const rootServerPath = path.join(__dirname, 'server.cjs');
     
     if (app.isPackaged) {
       process.env.NODE_ENV = 'production';
-      serverPath = fs.existsSync(unpackedServerPath) ? unpackedServerPath : distServerPath;
+      serverPath = fs.existsSync(rootServerPath) ? rootServerPath : distServerPath;
     } else {
       serverPath = distServerPath;
     }
 
     if (!fs.existsSync(serverPath)) {
-      throw new Error(`No se encontró el archivo del servidor en:\n- ${unpackedServerPath}\n- ${distServerPath}`);
+      throw new Error(`No se encontró el archivo del servidor en:\n- ${rootServerPath}\n- ${distServerPath}`);
     }
 
-    const serverUrl = pathToFileURL(serverPath).href;
-    await import(serverUrl);
+    // Usamos createRequire porque main.js corre en entorno ESM
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    require(serverPath);
     console.log('Iniciando servidor Express interno...');
   } catch (err) {
     console.error('Error al iniciar el servidor Express:', err);

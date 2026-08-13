@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build:app": "npm run build && electron-builder",
     "start": "tsx server.ts",
     "electron": "electron main.js",
@@ -51,9 +51,6 @@
       "dist/**/*",
       "!src/**/*",
       "!.env*"
-    ],
-    "asarUnpack": [
-      "dist/**/*"
     ],
     "win": {
       "target": "nsis"

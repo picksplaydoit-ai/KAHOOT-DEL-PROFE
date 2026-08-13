@@ -352,24 +352,30 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // __dirname is not available in ESM, we need to construct it
-    const { fileURLToPath } = await import('url');
     const path = await import('path');
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    
-    // In production, serve the Vite static files
-    // Determine where index.html is located
-    const distPathCandidate = path.join(__dirname, 'dist');
-    const rootPathCandidate = __dirname;
     const fs = await import('fs');
     
-    let servePath = __dirname;
+    let currentDir = '';
+    if (typeof __dirname !== 'undefined') {
+      currentDir = __dirname;
+    } else {
+      // @ts-ignore
+      const { fileURLToPath } = await import('url');
+      // @ts-ignore
+      currentDir = path.dirname(fileURLToPath(import.meta.url));
+    }
+    
+    // Determine where index.html is located
+    const distPathCandidate = path.join(currentDir, 'dist');
+    const rootPathCandidate = currentDir;
+    
+    let servePath = currentDir;
     if (fs.existsSync(path.join(distPathCandidate, 'index.html'))) {
       servePath = distPathCandidate;
     } else if (fs.existsSync(path.join(rootPathCandidate, 'index.html'))) {
       servePath = rootPathCandidate;
     } else {
-      console.warn('⚠️ No se encontró index.html ni en __dirname ni en __dirname/dist');
+      console.warn('⚠️ No se encontró index.html ni en currentDir ni en currentDir/dist');
     }
 
     app.use(express.static(servePath));
