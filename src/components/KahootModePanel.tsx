@@ -3,14 +3,16 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Play, Award, Flame, Users, ArrowRight, Trophy, RefreshCw, Volume2 } from 'lucide-react';
+import { Gamepad2, Play, Award, Flame, Users, ArrowRight, Trophy, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { AssessmentSession, Quiz, Question } from '../types';
+import { gameAudio } from '../utils/audio';
 
 interface KahootModePanelProps {
   quizzes: Quiz[];
   activeSession: AssessmentSession | null;
   onStartKahoot: (quizId: string) => void;
+  onStartSession: (sessionId: string) => void;
   onNextQuestion: (sessionId: string, nextIndex: number) => void;
   onFinishKahoot: (sessionId: string) => void;
 }
@@ -19,12 +21,23 @@ export const KahootModePanel: React.FC<KahootModePanelProps> = ({
   quizzes,
   activeSession,
   onStartKahoot,
+  onStartSession,
   onNextQuestion,
   onFinishKahoot
 }) => {
   const [selectedQuizId, setSelectedQuizId] = useState<string>(quizzes[0]?.id || '');
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (activeSession?.status === 'active' && !isMuted) {
+      gameAudio.play();
+    } else {
+      gameAudio.stop();
+    }
+    return () => gameAudio.stop();
+  }, [activeSession?.status, isMuted]);
 
   useEffect(() => {
     if (activeSession) {
@@ -92,6 +105,13 @@ export const KahootModePanel: React.FC<KahootModePanelProps> = ({
 
         {activeSession && activeSession.type === 'kahoot' && activeSession.status === 'active' ? (
           <div className="flex items-center gap-3">
+            <button
+               onClick={() => setIsMuted(!isMuted)}
+               className="p-3 bg-indigo-800 hover:bg-indigo-700 text-white rounded-xl shadow-lg transition-colors border border-indigo-600"
+               title={isMuted ? "Activar Música" : "Silenciar"}
+            >
+               {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
             {!isLastQuestion ? (
               <button
                 onClick={() => onNextQuestion(activeSession.id, activeSession.currentQuestionIndex + 1)}
@@ -135,8 +155,52 @@ export const KahootModePanel: React.FC<KahootModePanelProps> = ({
         )}
       </div>
 
-      {/* Pantalla de Juego en Vivo */}
-      {activeSession && activeSession.type === 'kahoot' && currentQuestion ? (
+      {/* Pantalla de Juego en Vivo / Lobby */}
+      {activeSession?.status === 'lobby' ? (
+        <div className="bg-slate-900 text-white rounded-3xl p-8 border border-slate-800 shadow-xl space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl font-black text-amber-400 uppercase tracking-widest animate-pulse">
+              Sala de Espera
+            </h2>
+            <p className="text-slate-400 text-lg">Únete a la sesión ingresando el PIN o escaneando el código QR</p>
+          </div>
+          
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12">
+            <div className="bg-white p-4 rounded-3xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
+              <img 
+                src={`/api/qr?url=${encodeURIComponent(`${window.location.protocol}//${window.location.host}/?pin=${activeSession.id}`)}`} 
+                alt="QR de Juego" 
+                className="w-64 h-64 object-contain" 
+              />
+            </div>
+            
+            <div className="text-center md:text-left space-y-6">
+              <div>
+                <span className="text-slate-400 uppercase tracking-widest font-bold text-sm">PIN de la Sesión</span>
+                <h3 className="text-5xl font-black text-indigo-400 font-mono tracking-wider">{activeSession.id.replace('session_', '')}</h3>
+              </div>
+              
+              <div>
+                <span className="text-slate-400 uppercase tracking-widest font-bold text-sm">Jugadores Listos</span>
+                <h3 className="text-5xl font-black text-emerald-400 flex items-center justify-center md:justify-start gap-3">
+                  <Users className="w-10 h-10" />
+                  {activeSession.students.length}
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-slate-800 flex justify-center">
+             <button
+                onClick={() => activeSession && onStartSession(activeSession.id)}
+                className="px-10 py-5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-2xl font-black rounded-2xl shadow-xl transition-all flex items-center gap-4 animate-bounce"
+             >
+                <Play className="w-8 h-8 fill-slate-900" />
+                COMENZAR JUEGO
+             </button>
+          </div>
+        </div>
+      ) : activeSession && activeSession.type === 'kahoot' && currentQuestion ? (
         <div className="space-y-6">
           {/* Tarjeta de Pregunta Gigante estilo Kahoot */}
           <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-lg space-y-6 text-center relative overflow-hidden">

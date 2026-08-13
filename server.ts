@@ -59,6 +59,24 @@ app.get('/api/network-info', async (req, res) => {
   }
 });
 
+// Endpoint dinámico para generar QR bajo demanda
+app.get('/api/qr', async (req, res) => {
+  try {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).send('Falta url');
+    const QRCode = (await import('qrcode')).default;
+    const qrDataUrl = await QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 400,
+      color: { dark: '#1e1b4b', light: '#ffffff' }
+    });
+    res.json({ qrDataUrl });
+  } catch (err) {
+    res.status(500).json({ error: 'Error generando QR' });
+  }
+});
+
 // Cuestionarios
 app.get('/api/quizzes', (req, res) => {
   res.json(getAllQuizzes());
@@ -112,7 +130,7 @@ app.post('/api/sessions/start', (req, res) => {
     quizId: quiz.id,
     quizTitle: quiz.title,
     type: type || 'exam',
-    status: 'active',
+    status: 'lobby', // Sala de espera inicial para Kahoot y Examen
     createdAt: new Date().toISOString(),
     currentQuestionIndex: 0,
     questionTimerSeconds: Number(questionTimerSeconds),
@@ -306,6 +324,19 @@ io.on('connection', (socket) => {
   });
 
   // Controles del Docente
+  socket.on('teacher:start-session', (data: { sessionId: string }) => {
+    const { sessionId } = data;
+    const session = getSessionById(sessionId);
+    if (!session) return;
+    
+    session.status = 'active';
+    session.timeRemaining = session.questionTimerSeconds;
+    saveSession(session);
+    
+    io.to(sessionId).emit('student:session-started', { session });
+    io.to(sessionId).emit('teacher:session-started', { session });
+  });
+
   socket.on('teacher:change-kahoot-question', (data: { sessionId: string; questionIndex: number }) => {
     const { sessionId, questionIndex } = data;
     const session = getSessionById(sessionId);

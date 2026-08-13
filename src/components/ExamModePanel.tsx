@@ -10,6 +10,7 @@ interface ExamModePanelProps {
   quizzes: Quiz[];
   activeSession: AssessmentSession | null;
   onStartExam: (quizId: string) => void;
+  onStartSession: (sessionId: string) => void;
   onFinishExam: (sessionId: string) => void;
   alerts: AntiCheatAlert[];
 }
@@ -18,6 +19,7 @@ export const ExamModePanel: React.FC<ExamModePanelProps> = ({
   quizzes,
   activeSession,
   onStartExam,
+  onStartSession,
   onFinishExam,
   alerts
 }) => {
@@ -87,7 +89,51 @@ export const ExamModePanel: React.FC<ExamModePanelProps> = ({
       </div>
 
       {/* Panel de Monitoreo en Tiempo Real si hay sesión activa */}
-      {activeSession && activeSession.type === 'exam' ? (
+      {activeSession?.status === 'lobby' ? (
+        <div className="bg-slate-900 text-white rounded-3xl p-8 border border-slate-800 shadow-xl space-y-8">
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl font-black text-rose-500 uppercase tracking-widest animate-pulse">
+              Sala de Espera (Examen Estricto)
+            </h2>
+            <p className="text-slate-400 text-lg">Únete a la sesión ingresando el PIN o escaneando el código QR</p>
+          </div>
+          
+          <div className="flex flex-col md:flex-row items-center justify-center gap-12">
+            <div className="bg-white p-4 rounded-3xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
+              <img 
+                src={`/api/qr?url=${encodeURIComponent(`${window.location.protocol}//${window.location.host}/?pin=${activeSession.id}`)}`} 
+                alt="QR de Juego" 
+                className="w-64 h-64 object-contain" 
+              />
+            </div>
+            
+            <div className="text-center md:text-left space-y-6">
+              <div>
+                <span className="text-slate-400 uppercase tracking-widest font-bold text-sm">PIN del Examen</span>
+                <h3 className="text-5xl font-black text-indigo-400 font-mono tracking-wider">{activeSession.id.replace('session_', '')}</h3>
+              </div>
+              
+              <div>
+                <span className="text-slate-400 uppercase tracking-widest font-bold text-sm">Alumnos en Sala</span>
+                <h3 className="text-5xl font-black text-emerald-400 flex items-center justify-center md:justify-start gap-3">
+                  <Users className="w-10 h-10" />
+                  {activeSession.students.length}
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-slate-800 flex justify-center">
+             <button
+                onClick={() => onStartSession(activeSession.id)}
+                className="px-10 py-5 bg-rose-600 hover:bg-rose-500 text-white text-2xl font-black rounded-2xl shadow-xl transition-all flex items-center gap-4 animate-bounce"
+             >
+                <Play className="w-8 h-8 fill-white" />
+                COMENZAR EXAMEN AHORA
+             </button>
+          </div>
+        </div>
+      ) : activeSession && activeSession.type === 'exam' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna 1 y 2: Monitor de Alumnos y Estado */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">

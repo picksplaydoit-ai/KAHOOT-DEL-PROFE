@@ -156,6 +156,13 @@ export default function App() {
     }
   };
 
+  const handleStartSession = (sessionId: string) => {
+    if (socket) {
+      socket.emit('teacher:start-session', { sessionId });
+    }
+    fetchSessions();
+  };
+
   const handleFinishSession = (sessionId: string) => {
     if (socket) {
       socket.emit('teacher:finish-session', { sessionId });
@@ -269,6 +276,7 @@ export default function App() {
             quizzes={quizzes}
             activeSession={activeSession}
             onStartExam={handleStartExam}
+            onStartSession={handleStartSession}
             onFinishExam={handleFinishSession}
             alerts={alerts}
           />
@@ -279,6 +287,7 @@ export default function App() {
             quizzes={quizzes}
             activeSession={activeSession}
             onStartKahoot={handleStartKahoot}
+            onStartSession={handleStartSession}
             onNextQuestion={handleNextQuestion}
             onFinishKahoot={handleFinishSession}
           />

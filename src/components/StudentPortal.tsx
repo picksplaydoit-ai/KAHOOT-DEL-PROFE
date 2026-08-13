@@ -22,6 +22,14 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
   const [sessionId, setSessionId] = useState(initialSessionId || '');
   const [isRegistered, setIsRegistered] = useState(false);
   const [studentData, setStudentData] = useState<Student | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pin = params.get('pin');
+    if (pin && !sessionId) {
+      setSessionId(pin);
+    }
+  }, []);
   const [session, setSession] = useState<AssessmentSession | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [currentScore, setCurrentScore] = useState(0);
@@ -39,6 +47,10 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
       setStudentData(data.student);
       setSession(data.session);
       setIsRegistered(true);
+    });
+
+    newSocket.on('student:session-started', (data: { session: AssessmentSession }) => {
+      setSession(data.session);
     });
 
     newSocket.on('student:answer-ack', (data: { isCorrect: boolean; pointsEarned: number }) => {
@@ -236,8 +248,20 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
         </div>
       </div>
 
-      {/* 2. MODO KAHOOT - BOTONES DE COLORES MÓVILES */}
-      {session?.type === 'kahoot' ? (
+      {/* 1.5. LOBBY DE ESPERA */}
+      {session?.status === 'lobby' ? (
+        <div className="max-w-xl mx-auto space-y-6 text-center mt-10">
+          <div className="w-20 h-20 mx-auto bg-indigo-600/20 rounded-full flex items-center justify-center mb-4">
+            <Smartphone className="w-10 h-10 text-indigo-400 animate-pulse" />
+          </div>
+          <h3 className="text-2xl font-black text-white">¡Estás dentro!</h3>
+          <p className="text-slate-400">Esperando a que el profesor inicie la actividad...</p>
+          <div className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl">
+            <span className="text-xs font-bold text-slate-500 uppercase block mb-2">Tu avatar</span>
+            <div className="text-6xl">{studentData?.avatar}</div>
+          </div>
+        </div>
+      ) : session?.type === 'kahoot' ? (
         <div className="max-w-xl mx-auto space-y-6">
           <div className="text-center space-y-1">
             <span className="text-xs font-extrabold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full uppercase tracking-wider">
