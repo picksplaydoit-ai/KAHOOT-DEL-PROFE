@@ -1,14 +1,8 @@
-/**
- * EL PROFE PRO - Portal del Estudiante (Cliente Web Móvil)
- * --------------------------------------------------------
- * Interfaz ligera, responsiva y Mobile-First servida en el celular o laptop del alumno.
- * Incluye detector antitrampas integrado con eventos visibilitychange y blur.
- */
-
 import React, { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Smartphone, CheckCircle2, ShieldAlert, Award, Send, Flame, AlertTriangle } from 'lucide-react';
 import { AssessmentSession, Student, Question } from '../types';
+import { KAHOOT_COLORS, KahootShape } from '../utils/kahootHelpers';
 
 interface StudentPortalProps {
   initialSessionId?: string;
@@ -187,23 +181,22 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">ID de Sesión Examen:</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">PIN del Juego:</label>
               <input
                 type="text"
                 value={sessionId}
                 onChange={e => setSessionId(e.target.value)}
-                placeholder="ID de sesión proporcionado por el profe"
+                placeholder="PIN"
                 required
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-center text-2xl tracking-widest font-mono font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition-transform hover:scale-[1.02] flex items-center justify-center gap-2"
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-lg rounded-xl shadow-lg transition-transform hover:scale-[1.02] flex items-center justify-center gap-2"
             >
-              <span>Ingresar al Examen</span>
-              <Send className="w-4 h-4" />
+              <span>Ingresar</span>
             </button>
           </form>
 
@@ -220,7 +213,89 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
     );
   }
 
-  // Banner de Alerta Antitrampas si cambia de pestaña
+  // Si es modo KAHOOT, queremos usar una pantalla completa especializada
+  if (session?.type === 'kahoot') {
+    return (
+      <div className="min-h-screen bg-[#f2f2f2] font-sans flex flex-col">
+        {/* Anti-cheat banner (if needed) */}
+        {blurWarning && (
+          <div className="absolute top-0 left-0 right-0 z-50 bg-rose-600 text-white p-3 shadow-md text-xs font-black flex items-center justify-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{blurWarning}</span>
+          </div>
+        )}
+
+        {/* LOBBY / WAITING SCREEN */}
+        {session?.status === 'lobby' ? (
+          <div className="flex-1 bg-[#46178f] text-white flex flex-col items-center justify-center p-6 text-center space-y-8">
+             <h1 className="text-4xl font-black mb-8">¡Estás dentro!</h1>
+             <div className="text-8xl animate-bounce">{studentData?.avatar}</div>
+             <p className="text-2xl font-bold">{studentData?.name}</p>
+             <h2 className="text-xl font-medium mt-8">¿Ves tu nombre en la pantalla?</h2>
+          </div>
+        ) : session?.status === 'active' ? (
+          /* ACTIVE QUESTION SCREEN */
+          lastFeedback ? (
+            /* FEEDBACK SCREEN (Correct/Incorrect) */
+            <div className={`flex-1 flex flex-col items-center justify-center p-6 text-white text-center ${lastFeedback.isCorrect ? 'bg-[#26890c]' : 'bg-[#e21b3c]'}`}>
+              <h1 className="text-5xl font-black mb-4">
+                {lastFeedback.isCorrect ? '¡Correcto!' : 'Incorrecto'}
+              </h1>
+              <div className="bg-black/20 px-6 py-3 rounded-full mb-8">
+                <span className="text-2xl font-bold">
+                  {lastFeedback.isCorrect ? `+${lastFeedback.points}` : '0'} pts
+                </span>
+              </div>
+              <p className="text-xl font-medium">Eres un genio.</p>
+              
+              <div className="absolute bottom-0 left-0 right-0 bg-black/10 p-4 flex justify-between items-center text-sm font-bold">
+                <span>{studentData?.name}</span>
+                <span>{currentScore} pts</span>
+              </div>
+            </div>
+          ) : (
+            /* BUTTONS SCREEN */
+            <div className="flex-1 flex flex-col h-full bg-[#f2f2f2]">
+              <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-2 p-2">
+                {[
+                  { id: 'A', bg: KAHOOT_COLORS.A, shape: 'A' },
+                  { id: 'B', bg: KAHOOT_COLORS.B, shape: 'B' },
+                  { id: 'C', bg: KAHOOT_COLORS.C, shape: 'C' },
+                  { id: 'D', bg: KAHOOT_COLORS.D, shape: 'D' }
+                ].map(b => (
+                  <button
+                    key={b.id}
+                    onClick={() => handleSelectOption(`q_${session.currentQuestionIndex}`, b.id)}
+                    className="w-full h-full rounded shadow-sm flex items-center justify-center active:scale-95 transition-transform"
+                    style={{ backgroundColor: b.bg }}
+                  >
+                    <KahootShape type={b.shape} className="w-16 h-16 text-white drop-shadow-md" />
+                  </button>
+                ))}
+              </div>
+              <div className="bg-white border-t border-gray-300 p-3 flex justify-between items-center text-gray-800 font-bold text-sm">
+                <span>{studentData?.name}</span>
+                <span className="bg-gray-200 px-3 py-1 rounded-md">{currentScore} pts</span>
+              </div>
+            </div>
+          )
+        ) : session?.status === 'finished' ? (
+          /* FINISHED SCREEN */
+          <div className="flex-1 bg-[#46178f] text-white flex flex-col items-center justify-center p-6 text-center space-y-6">
+             <Trophy className="w-24 h-24 text-amber-400 mb-4" />
+             <h1 className="text-4xl font-black">¡Juego Terminado!</h1>
+             <p className="text-xl">Mira el proyector para ver el podio.</p>
+             <div className="mt-8 bg-black/20 p-6 rounded-2xl">
+               <span className="block text-sm uppercase tracking-widest font-bold mb-2">Tu puntaje final</span>
+               <span className="text-5xl font-black">{currentScore}</span>
+             </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // MODO EXAMEN STANDARD (No Kahoot)
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 pb-12 font-sans">
       {blurWarning && (
@@ -248,89 +323,39 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ initialSessionId, 
         </div>
       </div>
 
-      {/* 1.5. LOBBY DE ESPERA */}
-      {session?.status === 'lobby' ? (
-        <div className="max-w-xl mx-auto space-y-6 text-center mt-10">
-          <div className="w-20 h-20 mx-auto bg-indigo-600/20 rounded-full flex items-center justify-center mb-4">
-            <Smartphone className="w-10 h-10 text-indigo-400 animate-pulse" />
-          </div>
-          <h3 className="text-2xl font-black text-white">¡Estás dentro!</h3>
-          <p className="text-slate-400">Esperando a que el profesor inicie la actividad...</p>
-          <div className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl">
-            <span className="text-xs font-bold text-slate-500 uppercase block mb-2">Tu avatar</span>
-            <div className="text-6xl">{studentData?.avatar}</div>
-          </div>
-        </div>
-      ) : session?.type === 'kahoot' ? (
-        <div className="max-w-xl mx-auto space-y-6">
-          <div className="text-center space-y-1">
-            <span className="text-xs font-extrabold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full uppercase tracking-wider">
-              Modo Kahoot Interactivo
+      <div className="max-w-xl mx-auto space-y-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <span className="text-xs font-bold text-indigo-400 uppercase">
+              Examen de Evaluación Continua
             </span>
-            <h3 className="text-xl font-black text-white">Selecciona tu respuesta en pantalla:</h3>
+            <span className="text-xs bg-emerald-900/50 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-800">
+              ● En Línea
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            {[
-              { id: 'A', bg: 'bg-rose-600 hover:bg-rose-500', shape: '🤼‍♂️ LUCHADOR' },
-              { id: 'B', bg: 'bg-blue-600 hover:bg-blue-500', shape: '🌮 TACO' },
-              { id: 'C', bg: 'bg-amber-500 hover:bg-amber-400', shape: '🪅 PIÑATA' },
-              { id: 'D', bg: 'bg-emerald-600 hover:bg-emerald-500', shape: '🎻 MARIACHI' }
-            ].map(b => (
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Responde las preguntas seleccionando la opción correcta. Recuerda permanecer en esta pantalla durante todo el examen.
+          </p>
+
+          <div className="space-y-4">
+            {['A', 'B', 'C', 'D'].map((opt) => (
               <button
-                key={b.id}
-                onClick={() => handleSelectOption(`q_${session.currentQuestionIndex}`, b.id)}
-                className={`${b.bg} h-36 rounded-3xl shadow-xl flex flex-col items-center justify-center text-white font-black text-xl transition-transform active:scale-95 border-2 border-white/20`}
+                key={opt}
+                onClick={() => handleSelectOption('q_current', opt)}
+                className={`w-full p-4 rounded-2xl border text-left font-bold text-sm transition-all flex items-center justify-between ${
+                  selectedAnswers['q_current'] === opt
+                    ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg'
+                    : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                }`}
               >
-                <span className="text-4xl mb-2">{b.shape.split(' ')[0]}</span>
-                <span>{b.shape.split(' ')[1]}</span>
+                <span>Opción {opt}</span>
+                {selectedAnswers['q_current'] === opt && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
               </button>
             ))}
           </div>
-
-          {lastFeedback && (
-            <div className={`p-4 rounded-2xl text-center font-bold text-sm ${lastFeedback.isCorrect ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-              {lastFeedback.isCorrect ? `¡Correcto! +${lastFeedback.points} pts 🚀` : '¡Incorrecto! Intenta en la siguiente ❌'}
-            </div>
-          )}
         </div>
-      ) : (
-        /* 3. MODO EXAMEN NORMAL */
-        <div className="max-w-xl mx-auto space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="text-xs font-bold text-indigo-400 uppercase">
-                Examen de Evaluación Continua
-              </span>
-              <span className="text-xs bg-emerald-900/50 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-800">
-                ● En Línea
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Responde las preguntas seleccionando la opción correcta. Recuerda permanecer en esta pantalla durante todo el examen.
-            </p>
-
-            {/* Simulación de Preguntas en Examen Continuo */}
-            <div className="space-y-4">
-              {['A', 'B', 'C', 'D'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => handleSelectOption('q_current', opt)}
-                  className={`w-full p-4 rounded-2xl border text-left font-bold text-sm transition-all flex items-center justify-between ${
-                    selectedAnswers['q_current'] === opt
-                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg'
-                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
-                  }`}
-                >
-                  <span>Opción {opt}</span>
-                  {selectedAnswers['q_current'] === opt && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 };
